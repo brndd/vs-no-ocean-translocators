@@ -29,6 +29,24 @@ public class NoOceanTranslocatorsModSystem : ModSystem
         base.StartServerSide(api);
         Api = api;
 
+        string cfgFilename = "NoOceanTranslocators.json";
+        try
+        {
+            NoOceanTranslocatorsConfig cfg;
+            if ((cfg = api.LoadModConfig<NoOceanTranslocatorsConfig>(cfgFilename)) == null)
+            {
+                api.StoreModConfig(NoOceanTranslocatorsConfig.Loaded, cfgFilename);
+            }
+            else
+            {
+                NoOceanTranslocatorsConfig.Loaded = cfg;
+            }
+        }
+        catch
+        {
+            api.StoreModConfig(NoOceanTranslocatorsConfig.Loaded, cfgFilename);
+        }
+
         if (!Harmony.HasAnyPatches(Mod.Info.ModID))
         {
             _harmony = new Harmony(Mod.Info.ModID);
@@ -65,6 +83,94 @@ public class NoOceanTranslocatorsModSystem : ModSystem
                         var blockBr = chunk.Data.GetBlockId(get_index(0, chunksize - 1), BlockLayersAccess.Fluid);
                         
                         api.BroadcastMessageToAllGroups($"Top left: {blockTl}, top right: {blockTr}, bottom left: {blockBl}, bottom right: {blockBr}", EnumChatType.AllGroups);
+                    },
+                    UntilPass = EnumWorldGenPass.Terrain,
+                    ChunkGenParams = null
+                };
+                
+                api.WorldManager.PeekChunkColumn(chunkPos.X, chunkPos.Y, peekOptions);
+                
+                // IMapChunk mapChunk = api.World.BlockAccessor.GetMapChunk(chunkPos);
+                // BlockPos chunkTl = new(chunkPos.X * chunksize, api.World.SeaLevel, chunkPos.Y * chunksize, pos.Dimension);
+                // BlockPos chunkTr = new(chunkTl.X + chunksize - 1, api.World.SeaLevel, chunkTl.Z, pos.Dimension);
+                // BlockPos chunkBl = new(chunkTl.X, api.World.SeaLevel - 1, chunkTl.Z + chunksize - 1, pos.Dimension);
+                // BlockPos chunkBr = new(chunkTl.X + chunksize - 1, api.World.SeaLevel + 1, chunkTl.Z + chunksize - 1, pos.Dimension);
+                //
+                // int saltwaterBlockId = api.World.GetBlock(new AssetLocation("saltwater-still-7")).BlockId;
+                //
+                // Block blockTl = api.World.BlockAccessor.GetBlock(chunkTl, BlockLayersAccess.Fluid);
+                // Block blockTr = api.World.BlockAccessor.GetBlock(chunkTr, BlockLayersAccess.Fluid);
+                // Block blockBl = api.World.BlockAccessor.GetBlock(chunkBl, BlockLayersAccess.Fluid);
+                // Block blockBr = api.World.BlockAccessor.GetBlock(chunkBr, BlockLayersAccess.Fluid);
+                // api.BroadcastMessageToAllGroups($"Top left (y={chunkTl.Y}): {blockTl.Code.Path}", EnumChatType.AllGroups);
+                // api.BroadcastMessageToAllGroups($"Top right (y={chunkTr.Y}): {blockTr.Code.Path}", EnumChatType.AllGroups);
+                // api.BroadcastMessageToAllGroups($"Bottom left (y={chunkBl.Y}): {blockBl.Code.Path}", EnumChatType.AllGroups);
+                // api.BroadcastMessageToAllGroups($"Bottom right (y={chunkBr.Y}): {blockBr.Code.Path}", EnumChatType.AllGroups);
+                
+                
+                return TextCommandResult.Success();
+            });
+
+        api.ChatCommands.Create("oceanmap")
+            .WithDescription("debug ocean map")
+            .RequiresPrivilege(Privilege.chat)
+            .RequiresPlayer()
+            .WithArgs(api.ChatCommands.Parsers.WorldPosition("target position"))
+            .HandleWith((args) =>
+            {
+                var pos = (args[0] as Vec3d).AsBlockPos;
+                const int chunksize = GlobalConstants.ChunkSize;
+                Vec2i chunkPos = new((int)pos.X / chunksize, (int)pos.Z / chunksize);
+                
+                ChunkPeekOptions peekOptions = new ChunkPeekOptions()
+                {
+                    OnGenerated = (chunks) =>
+                    {
+                        var chunk = chunks[chunkPos][0];
+                        int chunkSize = GlobalConstants.ChunkSize;
+                        int regionChunkSize = api.WorldManager.RegionSize / chunkSize;
+                        int regionX = chunkPos.X % regionChunkSize;
+                        int regionY = chunkPos.Y % regionChunkSize;
+                        
+                        var oceanMap = chunk.MapChunk.MapRegion.OceanMap;
+                        if (oceanMap == null)
+                        {
+                            api.BroadcastMessageToAllGroups("OceanMap is null!", EnumChatType.AllGroups);
+                            return;
+                        }
+
+                        if (oceanMap.Data.Length == 0)
+                        {
+                            api.BroadcastMessageToAllGroups("OceanMap is empty!", EnumChatType.AllGroups);
+                            return;
+                        }
+                        
+                        float oFac = (float)oceanMap.InnerSize / regionChunkSize;
+                        int oceanTl = oceanMap.GetUnpaddedInt((int)(regionX * oFac), (int)(regionY * oFac));
+                        int oceanTr = oceanMap.GetUnpaddedInt((int)(regionX * oFac + oFac), (int)(regionY * oFac));
+                        int oceanBl = oceanMap.GetUnpaddedInt((int)(regionX * oFac), (int)(regionY * oFac + oFac));
+                        int oceanBr = oceanMap.GetUnpaddedInt((int)(regionX * oFac + oFac), (int)(regionY * oFac + oFac));
+                        api.BroadcastMessageToAllGroups($"OceanMap TL: {oceanTl}, TR: {oceanTr}, BL: {oceanBl}, BR: {oceanBr}", EnumChatType.AllGroups);
+
+                        var upheavalMap = chunk.MapChunk.MapRegion.UpheavelMap;
+                        if (upheavalMap == null)
+                        {
+                            api.BroadcastMessageToAllGroups("UpheavalMap is null!", EnumChatType.AllGroups);
+                            return;
+                        }
+
+                        if (upheavalMap.Data.Length == 0)
+                        {
+                            api.BroadcastMessageToAllGroups("UpheavalMap is empty!", EnumChatType.AllGroups);
+                            return;
+                        }
+
+                        float uFac = (float)upheavalMap.InnerSize / regionChunkSize;
+                        int upheavalTl = upheavalMap.GetUnpaddedInt((int)(regionX * uFac), (int)(regionY * uFac));
+                        int upheavalTr = upheavalMap.GetUnpaddedInt((int)(regionX * uFac + uFac), (int)(regionY * uFac));
+                        int upheavalBl = upheavalMap.GetUnpaddedInt((int)(regionX * uFac), (int)(regionY * uFac + uFac));
+                        int upheavalBr = upheavalMap.GetUnpaddedInt((int)(regionX * uFac + uFac), (int)(regionY * uFac + uFac));
+                        api.BroadcastMessageToAllGroups($"UpheavalMap TL: {upheavalTl}, TR: {upheavalTr}, BL: {upheavalBl}, BR: {upheavalBr}", EnumChatType.AllGroups);
                     },
                     UntilPass = EnumWorldGenPass.Terrain,
                     ChunkGenParams = null
@@ -144,29 +250,55 @@ public class NoOceanTranslocatorsModSystem : ModSystem
             {
                 OnGenerated = (chunks) =>
                 {
-                    const int chunksize = GlobalConstants.ChunkSize;
-                    int seaLevel = Api.World.SeaLevel - 1;
-                    int chunkY = seaLevel / chunksize;
-                    int localY = seaLevel % chunksize;
-                    var chunk = chunks[new Vec2i(chunkX, chunkZ)][chunkY];
-                    int saltwaterBlockId = Api.World.GetBlock(new AssetLocation("saltwater-still-7")).BlockId;
-                    var getIndex = (int localX, int localZ) => (localY * chunksize + localZ) * chunksize + localX;
-                    var blockTl = chunk.Data.GetBlockId(getIndex(0, 0), BlockLayersAccess.Fluid);
-                    var blockTr = chunk.Data.GetBlockId(getIndex(chunksize - 1, 0), BlockLayersAccess.Fluid);
-                    var blockBl = chunk.Data.GetBlockId(getIndex(0, chunksize - 1), BlockLayersAccess.Fluid);
-                    var blockBr = chunk.Data.GetBlockId(getIndex(0, chunksize - 1), BlockLayersAccess.Fluid);
-                    var blockC = chunk.Data.GetBlockId(getIndex(chunksize / 2 - 1, chunksize / 2 - 1), BlockLayersAccess.Fluid);
-
-                    //If all the corners and the center are liquid, look for a different chunk.
-                    if (blockTl == saltwaterBlockId && blockTr == saltwaterBlockId && blockBl == saltwaterBlockId && blockBr == saltwaterBlockId && blockC == saltwaterBlockId)
+                    int chunkSize = GlobalConstants.ChunkSize;
+                    int regionChunkSize = Api.WorldManager.RegionSize / chunkSize;
+                    var chunk = chunks[new Vec2i(chunkX, chunkZ)][0];
+                    var oceanMap = chunk.MapChunk.MapRegion.OceanMap;
+                    if (oceanMap == null)
                     {
-                        Api.Logger.Debug("NoOceanTranslocators: Rolled a chunk with all liquid corners and center. Rerolling.");
+                        Api.Logger.Error("NoOceanTranslocators: OceanMap is null or empty. This should not happen. Rerolling.");
                         instance.findNextChunk = true;
                         return;
                     }
                     
-                    //This chunk looks valid, so proceed to next pass.
-                    Api.Logger.Debug("NoOceanTranslocators: Chunk looks un-oceanic, proceeding.");
+                    int regionX = chunkX % regionChunkSize;
+                    int regionY = chunkZ % regionChunkSize;
+                    float oFac = (float)oceanMap.InnerSize / regionChunkSize;
+                    int oceanTl = oceanMap.GetUnpaddedInt((int)(regionX * oFac), (int)(regionY * oFac));
+                    int oceanTr = oceanMap.GetUnpaddedInt((int)(regionX * oFac + oFac), (int)(regionY * oFac));
+                    int oceanBl = oceanMap.GetUnpaddedInt((int)(regionX * oFac), (int)(regionY * oFac + oFac));
+                    int oceanBr = oceanMap.GetUnpaddedInt((int)(regionX * oFac + oFac), (int)(regionY * oFac + oFac));
+
+                    //If all the corners are liquid, look for a different chunk.
+                    var maxOcean = NoOceanTranslocatorsConfig.Loaded.oceanThreshold;
+                    if (oceanTl >= maxOcean && oceanTr >= maxOcean && oceanBl >= maxOcean && oceanBr >= maxOcean)
+                    {
+                        var acceptChance = NoOceanTranslocatorsConfig.Loaded.oceanAcceptChance;
+                        if (acceptChance >= 0.0f)
+                        {
+                            var rand = Api.World.Rand.NextDouble();
+                            if (acceptChance < rand)
+                            {
+                                var rangeIncrease = NoOceanTranslocatorsConfig.Loaded.failRangeIncrease;
+                                if (rangeIncrease > 0)
+                                {
+                                    instance.MaxTeleporterRangeInBlocks += rangeIncrease;
+                                    Api.Logger.Debug("NoOceanTranslocators: Rolled a chunk that looks to be in the ocean. Increasing max search range to {0} and trying again.", instance.MaxTeleporterRangeInBlocks);
+                                }
+                                else
+                                {
+                                    Api.Logger.Debug("NoOceanTranslocators: Rolled a chunk that looks to be in the ocean. Trying again.", instance.MaxTeleporterRangeInBlocks);
+                                }
+                                instance.findNextChunk = true;
+                                return;
+                            }
+                        }
+                        Api.Logger.Debug("NoOceanTranslocators: Chunk looks to be in the ocean, but accepting anyway due to oceanAcceptChance.");
+                    }
+                    else
+                    {
+                        Api.Logger.Debug("NoOceanTranslocators: Chunk looks un-oceanic, proceeding.");    
+                    }
                     
                     TreeAttribute genParams = new TreeAttribute();
                     TreeAttribute subtree;
@@ -211,7 +343,7 @@ public class NoOceanTranslocatorsModSystem : ModSystem
     public static void ConstructorPostfix(ref BlockEntityStaticTranslocator __instance)
     {
         __instance.MinTeleporterRangeInBlocks = 200;
-        __instance.MaxTeleporterRangeInBlocks = 1000;
+        __instance.MaxTeleporterRangeInBlocks = 500;
     }
 
 }
