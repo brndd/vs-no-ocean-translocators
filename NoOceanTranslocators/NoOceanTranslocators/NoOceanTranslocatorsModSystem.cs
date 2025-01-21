@@ -155,7 +155,7 @@ public class NoOceanTranslocatorsModSystem : ModSystem
                     var blockTr = chunk.Data.GetBlockId(getIndex(chunksize - 1, 0), BlockLayersAccess.Fluid);
                     var blockBl = chunk.Data.GetBlockId(getIndex(0, chunksize - 1), BlockLayersAccess.Fluid);
                     var blockBr = chunk.Data.GetBlockId(getIndex(0, chunksize - 1), BlockLayersAccess.Fluid);
-                    var blockC = chunk.Data.GetBlockId(getIndex(chunksize / 2, chunksize / 2), BlockLayersAccess.Fluid);
+                    var blockC = chunk.Data.GetBlockId(getIndex(chunksize / 2 - 1, chunksize / 2 - 1), BlockLayersAccess.Fluid);
 
                     //If all the corners and the center are liquid, look for a different chunk.
                     if (blockTl == saltwaterBlockId && blockTr == saltwaterBlockId && blockBl == saltwaterBlockId && blockBr == saltwaterBlockId && blockC == saltwaterBlockId)
@@ -206,45 +206,12 @@ public class NoOceanTranslocatorsModSystem : ModSystem
         return false; //override original
     }
     
-    [HarmonyPrefix]
-    [HarmonyPatch(typeof(BlockEntityStaticTranslocator), "HasExitPoint", new Type[] { typeof(BlockPos) })]
-    public static bool CheckExitPoint(ref BlockPos __result, BlockPos nearpos)
-    {
-        Api.BroadcastMessageToAllGroups($"Old function is looking for exit point around {nearpos}!", EnumChatType.AllGroups);
-        
-        
-        return true;
-    }
-    
-    [HarmonyPrefix]
-    [HarmonyPatch(typeof(BlockEntityStaticTranslocator), "HasExitPoint",
-        new Type[] { typeof(Dictionary<Vec2i, IServerChunk[]>), typeof(int), typeof(int) })]
-    public static bool CheckExitPoint(ref BlockPos __result, Dictionary<Vec2i, IServerChunk[]> columnsByChunkCoordinate,
-        int centerCx, int centerCz)
-    {
-        Api.BroadcastMessageToAllGroups($"New function is looking for exit point around {centerCx}, {centerCz}!", EnumChatType.AllGroups);
-    
-        var chunk = columnsByChunkCoordinate[new Vec2i(centerCx, centerCz)][0];
-        
-        int saltwaterBlockId = Api.World.GetBlock(new AssetLocation("saltwater-still-7")).BlockId;
-        const int chunkSize = GlobalConstants.ChunkSize;
-        int seaLevel = Api.World.SeaLevel - 1;
-        BlockPos chunkTl = new(centerCx * chunkSize, seaLevel, centerCz * chunkSize);
-        BlockPos chunkTr = new(chunkTl.X + chunkSize - 1, seaLevel, chunkTl.Z);
-        BlockPos chunkBl = new(chunkTl.X, seaLevel, chunkTl.Z + chunkSize - 1);
-        BlockPos chunkBr = new(chunkTl.X + chunkSize - 1, seaLevel, chunkTl.Z + chunkSize - 1);
-        
-        //Block blockTl = chunk.getlocalbl
-        
-        return true;
-    }
-    
     [HarmonyPostfix]
     [HarmonyPatch(typeof(BlockEntityStaticTranslocator), MethodType.Constructor)]
     public static void ConstructorPostfix(ref BlockEntityStaticTranslocator __instance)
     {
-        __instance.MinTeleporterRangeInBlocks = 10000;
-        __instance.MaxTeleporterRangeInBlocks = 20000;
+        __instance.MinTeleporterRangeInBlocks = 200;
+        __instance.MaxTeleporterRangeInBlocks = 1000;
     }
 
 }
