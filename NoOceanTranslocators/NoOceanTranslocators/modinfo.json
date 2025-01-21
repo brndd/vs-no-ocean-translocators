@@ -1,11 +1,11 @@
 {
     "type": "code",
     "modid": "nooceantranslocators",
-    "name": "NoOceanTranslocators",
+    "name": "No Ocean Translocators",
     "authors": [
-        "Unknown"
+        "Burneddi"
     ],
-    "description": "To be added",
+    "description": "Disables (or reduces the chance of) translocators appearing under the ocean.",
     "version": "1.0.0",
     "dependencies": {
         "game": ""
