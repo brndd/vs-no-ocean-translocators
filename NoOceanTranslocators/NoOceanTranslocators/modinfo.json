@@ -6,7 +6,7 @@
         "Burneddi"
     ],
     "description": "Disables or reduces the chance of translocators appearing under the ocean.",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "dependencies": {
         "game": ""
     }
