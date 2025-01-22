@@ -5,7 +5,7 @@ public class NoOceanTranslocatorsConfig
     public static NoOceanTranslocatorsConfig Loaded { get; set; } = new NoOceanTranslocatorsConfig();
 
     //Minimum value in ocean map to consider the chunk ocean (0-255). At 0, every chunk will be considered ocean.
-    public int oceanThreshold = 200;
+    public int oceanThreshold = 128;
 
     //Every time we generate a chunk that's in the ocean, increase the max search range of the translocator by this many blocks.
     public int failMaxRangeIncrease = 200;
