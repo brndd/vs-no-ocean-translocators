@@ -5,7 +5,7 @@
     "authors": [
         "Burneddi"
     ],
-    "description": "Disables (or reduces the chance of) translocators appearing under the ocean.",
+    "description": "Disables or reduces the chance of translocators appearing under the ocean.",
     "version": "1.0.0",
     "dependencies": {
         "game": ""
