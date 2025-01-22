@@ -121,11 +121,16 @@ public class NoOceanTranslocatorsModSystem : ModSystem
                             var rand = Api.World.Rand.NextDouble();
                             if (acceptChance < rand)
                             {
-                                var rangeIncrease = NoOceanTranslocatorsConfig.Loaded.failRangeIncrease;
-                                if (rangeIncrease > 0)
+                                var maxRangeIncrease = NoOceanTranslocatorsConfig.Loaded.failMaxRangeIncrease;
+                                var minRangeIncrease = NoOceanTranslocatorsConfig.Loaded.failMinRangeIncrease;
+                                if (maxRangeIncrease > 0 || minRangeIncrease > 0)
                                 {
-                                    instance.MaxTeleporterRangeInBlocks += rangeIncrease;
-                                    Api.Logger.VerboseDebug("NoOceanTranslocators: Rolled a chunk that looks to be in the ocean. Increasing max search range to {0} and trying again.", instance.MaxTeleporterRangeInBlocks);
+                                    var newMax = instance.MaxTeleporterRangeInBlocks + maxRangeIncrease;
+                                    var newMin = instance.MinTeleporterRangeInBlocks + minRangeIncrease;
+                                    newMin = Math.Min(newMin, newMax);
+                                    instance.MaxTeleporterRangeInBlocks = newMax;
+                                    instance.MinTeleporterRangeInBlocks = newMin;
+                                    Api.Logger.VerboseDebug("NoOceanTranslocators: Rolled a chunk that looks to be in the ocean. Increasing search ranges to {0}-{1} and trying again.", newMin, newMax);
                                 }
                                 else
                                 {
