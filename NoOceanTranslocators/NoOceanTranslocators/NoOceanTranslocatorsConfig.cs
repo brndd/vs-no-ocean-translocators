@@ -11,5 +11,5 @@ public class NoOceanTranslocatorsConfig
     public int failRangeIncrease = 200;
 
     //Every time we generate a chunk that's in the ocean, accept it anyway at these odds (0.0-1.0).
-    public float oceanAcceptChance = 0.05f;
+    public float oceanAcceptChance = 0.00f;
 }
